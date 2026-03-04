@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       })
       .eq('id', existe.id)
       .select()
-      .single()
+      .maybeSingle()
     if (error) throw error
     cliente = data
   } else {
@@ -59,7 +59,7 @@ export default async function handler(req, res) {
         password_hash: hash
       })
       .select()
-      .single()
+      .maybeSingle()
     if (error) throw error
     cliente = data
   }
