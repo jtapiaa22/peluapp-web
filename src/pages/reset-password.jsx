@@ -79,7 +79,7 @@ export default function ResetPassword() {
                 <p className="text-zinc-500 text-sm">Ingresala dos veces para confirmar.</p>
               </div>
 
-              {error && !token && (
+              {error &&(
                 <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3">
                   <AlertCircle size={18} className="text-red-400 flex-shrink-0" />
                   <p className="text-red-400 text-sm">{error}</p>
