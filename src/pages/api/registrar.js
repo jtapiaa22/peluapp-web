@@ -64,6 +64,10 @@ export default async function handler(req, res) {
     cliente = data
   }
 
-  const { password_hash, reset_token, reset_expires_at, ...clienteSeguro } = cliente
+  if (!cliente) {
+    return res.status(500).json({ error: 'Error al crear la cuenta. Verificá que las columnas existan en Supabase.' })
+  }
+
+  const { password_hash: _ph, reset_token: _rt, reset_expires_at: _re, ...clienteSeguro } = cliente
   return res.status(200).json({ cliente: clienteSeguro })
 }
