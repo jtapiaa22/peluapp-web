@@ -229,7 +229,7 @@ export default function Reservar() {
           <div className="flex gap-3 items-center">
             <button onClick={() => router.push(`/mi-turno?p=${sessionStorage.getItem('peluqueria_id')}`)}
               className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Mis turnos</button>
-            <button onClick={() => { sessionStorage.clear(); router.push('/') }}
+            <button onClick={() => { const pid = sessionStorage.getItem('peluqueria_id'); sessionStorage.clear(); router.push(`/?p=${pid}`) }}
               className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">Salir</button>
           </div>
         </div>
