@@ -18,9 +18,10 @@ export default function ResetPassword() {
   const [exito, setExito]         = useState(false)
   const [nombre, setNombre]       = useState('')
 
-  // Validar que haya token
   useEffect(() => {
-    if (router.isReady && !token) setError('Link inválido. No hay token en la URL.')
+    if (router.isReady && !token) {
+      setError('Link inválido. No hay token en la URL.')
+    }
   }, [router.isReady, token])
 
   const handleReset = async () => {
@@ -79,14 +80,14 @@ export default function ResetPassword() {
                 <p className="text-zinc-500 text-sm">Ingresala dos veces para confirmar.</p>
               </div>
 
-              {error &&(
+              {error && (
                 <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3">
                   <AlertCircle size={18} className="text-red-400 flex-shrink-0" />
                   <p className="text-red-400 text-sm">{error}</p>
                 </div>
               )}
 
-              {token && (
+              {token && !error && (
                 <>
                   <div className="relative">
                     <Input
@@ -112,13 +113,19 @@ export default function ResetPassword() {
                     value={password2}
                     onChange={e => { setPassword2(e.target.value); setError('') }}
                     onKeyDown={e => e.key === 'Enter' && handleReset()}
-                    error={error}
                   />
 
                   <Button onClick={handleReset} disabled={loading} fullWidth>
                     {loading ? 'Guardando...' : 'Guardar contraseña →'}
                   </Button>
                 </>
+              )}
+
+              {/* Si hay error del servidor, mostrar botón para pedir otro link */}
+              {error && token && (
+                <p className="text-xs text-zinc-500 text-center">
+                  Volvé al inicio y pedí un nuevo link desde "¿Olvidaste tu contraseña?".
+                </p>
               )}
             </div>
           )}
