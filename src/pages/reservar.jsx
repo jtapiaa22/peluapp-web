@@ -221,17 +221,19 @@ export default function Reservar() {
       <div className="flex flex-col gap-6">
 
         {/* Bienvenida */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-white">Hola, {cliente?.nombre?.split(' ')[0]} 👋</h1>
-            <p className="text-zinc-500 text-sm">Elegí tu turno</p>
-          </div>
-          <div className="flex gap-3 items-center">
-            <button onClick={() => router.push(`/mi-turno?p=${sessionStorage.getItem('peluqueria_id')}`)}
-              className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Mis turnos</button>
-            <button onClick={() => { const pid = sessionStorage.getItem('peluqueria_id'); sessionStorage.clear(); router.push(`/?p=${pid}`) }}
-              className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">Salir</button>
-          </div>
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={() => router.push(`/mi-turno?p=${sessionStorage.getItem('peluqueria_id')}`)}
+            className="text-sm font-medium text-violet-400 bg-violet-400/10 hover:bg-violet-400/20 border border-violet-400/30 hover:border-violet-400/60 px-3 py-1.5 rounded-lg transition-all"
+          >
+            Mis turnos
+          </button>
+          <button
+            onClick={() => { const pid = sessionStorage.getItem('peluqueria_id'); sessionStorage.clear(); router.push(`/?p=${pid}`) }}
+            className="text-sm font-medium text-zinc-400 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-500 px-3 py-1.5 rounded-lg transition-all"
+          >
+            Salir
+          </button>
         </div>
 
         {/* Steps */}
