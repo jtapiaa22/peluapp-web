@@ -196,19 +196,27 @@ export default function MiTurno() {
               {esEsperandoSena && !vencido && (
                 <div className="mb-4 p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl">
                   <p className="text-orange-300 font-semibold text-sm mb-3">
-                    💸 Instrucciones para pagar la seña:
+                    💸 Pagá la seña para confirmar tu turno
                   </p>
-                  <p className="text-zinc-400 text-sm mb-4 leading-relaxed">
-                    Para confirmar tu turno definitivamente, realizá una transferencia y avisale al peluquero.
-                    Una vez que confirme el pago, vas a recibir un email de confirmación.
-                  </p>
-                  <div className="flex flex-col gap-1 text-sm">
-                    <div className="flex items-center gap-2 p-2 bg-orange-500/10 rounded-lg mt-1">
-                      <Clock size={13} className="text-orange-400 flex-shrink-0" />
-                      <span className="text-orange-300/80 text-xs">
-                        Tenés <strong>{horas} horas</strong> para pagar. Después se cancela automáticamente.
+                  <div className="flex flex-col gap-2 text-sm mb-4">
+                    <div className="flex justify-between py-2 border-b border-zinc-800/60">
+                      <span className="text-zinc-400">Monto</span>
+                      <span className="text-white font-bold text-base">
+                        ${Number(peluqueria?.sena_monto || 0).toLocaleString('es-AR')}
                       </span>
                     </div>
+                    <div className="flex justify-between py-2">
+                      <span className="text-zinc-400">Alias / CBU</span>
+                      <span className="text-orange-300 font-bold font-mono">
+                        {peluqueria?.sena_alias || '—'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 bg-orange-500/10 rounded-lg">
+                    <Clock size={13} className="text-orange-400 flex-shrink-0" />
+                    <span className="text-orange-300/80 text-xs">
+                      Tenés <strong>{horas} horas</strong> para pagar. Después se cancela automáticamente.
+                    </span>
                   </div>
                 </div>
               )}
