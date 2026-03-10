@@ -9,18 +9,38 @@ const supabase = createClient(
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { nombre, email, password, telefono } = req.body
+  const { nombre, username, email, password, telefono } = req.body
 
-  if (!nombre || !email || !password) {
-    return res.status(400).json({ error: 'Nombre, email y contraseña son obligatorios.' })
+  if (!nombre || !username || !email || !password) {
+    return res.status(400).json({ error: 'Nombre, usuario, email y contraseña son obligatorios.' })
   }
   if (password.length < 6) {
     return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres.' })
   }
 
-  const emailNorm = email.toLowerCase().trim()
+  const emailNorm    = email.toLowerCase().trim()
+  const usernameNorm = username.toLowerCase().trim()
 
-  // Ver si ya existe
+  // Validar formato de username
+  if (usernameNorm.length < 3) {
+    return res.status(400).json({ error: 'El nombre de usuario debe tener al menos 3 caracteres.' })
+  }
+  if (!/^[a-z0-9._]+$/.test(usernameNorm)) {
+    return res.status(400).json({ error: 'El usuario solo puede tener letras, números, puntos y guiones bajos.' })
+  }
+
+  // Verificar si el username ya está en uso
+  const { data: usernameExiste } = await supabase
+    .from('clientes')
+    .select('id')
+    .eq('username', usernameNorm)
+    .maybeSingle()
+
+  if (usernameExiste) {
+    return res.status(409).json({ error: 'Ese nombre de usuario ya está en uso. Elegí otro.' })
+  }
+
+  // Ver si ya existe por email
   const { data: existe } = await supabase
     .from('clientes')
     .select('id, password_hash')
@@ -35,11 +55,12 @@ export default async function handler(req, res) {
 
   let cliente
   if (existe) {
-    // Cliente antiguo (registrado con código): le asignamos contraseña
+    // Cliente antiguo (registrado con código): le asignamos contraseña y username
     const { data, error } = await supabase
       .from('clientes')
       .update({
         nombre:        nombre.trim(),
+        username:      usernameNorm,
         telefono:      telefono || null,
         password_hash: hash
       })
@@ -54,6 +75,7 @@ export default async function handler(req, res) {
       .from('clientes')
       .insert({
         nombre:        nombre.trim(),
+        username:      usernameNorm,
         email:         emailNorm,
         telefono:      telefono || null,
         password_hash: hash

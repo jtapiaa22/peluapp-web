@@ -20,19 +20,20 @@ export default function Home() {
   const [showPass, setShowPass]         = useState(false)
   const [showPass2, setShowPass2]       = useState(false)
 
-  // Campos login
-  const [loginEmail, setLoginEmail]   = useState('')
-  const [loginPass, setLoginPass]     = useState('')
+  // Campos login — ahora acepta usuario o email
+  const [loginIdentificador, setLoginIdentificador] = useState('')
+  const [loginPass, setLoginPass]                   = useState('')
 
-  // Campos registro
-  const [regNombre, setRegNombre]     = useState('')
-  const [regEmail, setRegEmail]       = useState('')
-  const [regPass, setRegPass]         = useState('')
-  const [regPass2, setRegPass2]       = useState('')
-  const [regTel, setRegTel]           = useState('')
+  // Campos registro — se agrega username
+  const [regNombre, setRegNombre]       = useState('')
+  const [regUsername, setRegUsername]    = useState('')
+  const [regEmail, setRegEmail]         = useState('')
+  const [regPass, setRegPass]           = useState('')
+  const [regPass2, setRegPass2]         = useState('')
+  const [regTel, setRegTel]             = useState('')
 
   // Campo recuperar
-  const [recEmail, setRecEmail]       = useState('')
+  const [recEmail, setRecEmail]         = useState('')
 
   useEffect(() => {
     if (!peluqueriaId) return
@@ -48,13 +49,13 @@ export default function Home() {
 
   // ── LOGIN ────────────────────────────────────────────────────────────────────
   const handleLogin = async () => {
-    if (!loginEmail.trim() || !loginPass) { setError('Completá todos los campos.'); return }
+    if (!loginIdentificador.trim() || !loginPass) { setError('Completá todos los campos.'); return }
     setLoading(true); setError('')
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail.trim(), password: loginPass })
+        body: JSON.stringify({ identificador: loginIdentificador.trim(), password: loginPass })
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Error al ingresar.'); return }
@@ -65,7 +66,11 @@ export default function Home() {
 
   // ── REGISTRO ─────────────────────────────────────────────────────────────────
   const handleRegistro = async () => {
-    if (!regNombre.trim() || !regEmail.trim() || !regPass) { setError('Completá nombre, email y contraseña.'); return }
+    if (!regNombre.trim() || !regUsername.trim() || !regEmail.trim() || !regPass) {
+      setError('Completá nombre, usuario, email y contraseña.'); return
+    }
+    if (regUsername.trim().length < 3) { setError('El nombre de usuario debe tener al menos 3 caracteres.'); return }
+    if (!/^[a-zA-Z0-9._]+$/.test(regUsername.trim())) { setError('El usuario solo puede tener letras, números, puntos y guiones bajos.'); return }
     if (!regEmail.includes('@')) { setError('Ingresá un email válido.'); return }
     if (regPass.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return }
     if (regPass !== regPass2) { setError('Las contraseñas no coinciden.'); return }
@@ -74,7 +79,13 @@ export default function Home() {
       const res = await fetch('/api/registrar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre: regNombre.trim(), email: regEmail.trim(), password: regPass, telefono: regTel.trim() || null })
+        body: JSON.stringify({
+          nombre:   regNombre.trim(),
+          username: regUsername.trim(),
+          email:    regEmail.trim(),
+          password: regPass,
+          telefono: regTel.trim() || null
+        })
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Error al registrarse.'); return }
@@ -171,15 +182,15 @@ export default function Home() {
             <div className="flex flex-col gap-5">
               <div>
                 <h2 className="font-bold text-white text-lg mb-1">Bienvenido/a de vuelta</h2>
-                <p className="text-zinc-500 text-sm">Ingresá con tu email y contraseña.</p>
+                <p className="text-zinc-500 text-sm">Ingresá con tu usuario o email.</p>
               </div>
 
               <Input
-                label="Email"
-                type="email"
-                placeholder="tu@email.com"
-                value={loginEmail}
-                onChange={e => { setLoginEmail(e.target.value); setError('') }}
+                label="Usuario o email"
+                type="text"
+                placeholder="tu_usuario o tu@email.com"
+                value={loginIdentificador}
+                onChange={e => { setLoginIdentificador(e.target.value); setError('') }}
                 onKeyDown={e => e.key === 'Enter' && handleLogin()}
               />
 
@@ -229,6 +240,19 @@ export default function Home() {
                 value={regNombre}
                 onChange={e => { setRegNombre(e.target.value); setError('') }}
               />
+
+              <div>
+                <Input
+                  label="Nombre de usuario"
+                  placeholder="juan.garcia"
+                  value={regUsername}
+                  onChange={e => { setRegUsername(e.target.value.replace(/\s/g, '').toLowerCase()); setError('') }}
+                />
+                <p className="text-xs text-zinc-600 mt-1.5">
+                  Solo letras, números, puntos y guiones bajos. Con esto iniciás sesión.
+                </p>
+              </div>
+
               <Input
                 label="Email"
                 type="email"

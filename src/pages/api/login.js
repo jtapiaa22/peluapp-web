@@ -9,19 +9,34 @@ const supabase = createClient(
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { email, password } = req.body
-  if (!email || !password) return res.status(400).json({ error: 'Faltan datos.' })
+  const { identificador, password } = req.body
+  if (!identificador || !password) return res.status(400).json({ error: 'Faltan datos.' })
 
-  const emailNorm = email.toLowerCase().trim()
+  const valor = identificador.toLowerCase().trim()
 
-  const { data: cliente } = await supabase
-    .from('clientes')
-    .select('*')
-    .eq('email', emailNorm)
-    .maybeSingle()
+  // Buscar por email O por username
+  let cliente = null
+
+  if (valor.includes('@')) {
+    // Parece un email → buscar por email
+    const { data } = await supabase
+      .from('clientes')
+      .select('*')
+      .eq('email', valor)
+      .maybeSingle()
+    cliente = data
+  } else {
+    // No tiene @ → buscar por username
+    const { data } = await supabase
+      .from('clientes')
+      .select('*')
+      .eq('username', valor)
+      .maybeSingle()
+    cliente = data
+  }
 
   if (!cliente) {
-    return res.status(401).json({ error: 'Email o contraseña incorrectos.' })
+    return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' })
   }
 
   if (!cliente.password_hash) {
@@ -32,7 +47,7 @@ export default async function handler(req, res) {
 
   const ok = await bcrypt.compare(password, cliente.password_hash)
   if (!ok) {
-    return res.status(401).json({ error: 'Email o contraseña incorrectos.' })
+    return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' })
   }
 
   // Nunca devolver el hash al cliente
