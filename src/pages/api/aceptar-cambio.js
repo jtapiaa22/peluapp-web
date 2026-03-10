@@ -47,6 +47,23 @@ export default async function handler(req, res) {
       sena_vence_at:   venceAt,
     }).eq('id', turno_id)
 
+    // Insertar en tabla independiente turnos_senas
+    await supabase.from('turnos_senas').insert({
+      turno_web_id:     turno.id,
+      peluqueria_id:    turno.peluqueria_id,
+      cliente_nombre:   turno.cliente_nombre,
+      cliente_email:    turno.cliente_email,
+      peluquero_nombre: turno.peluquero_nombre,
+      peluquero_id:     turno.peluquero_id,
+      servicio_nombre:  turno.servicio_nombre || null,
+      fecha:            turno.fecha_propuesta,
+      hora:             turno.hora_propuesta?.substring(0, 5),
+      monto:            senaMonto,
+      alias:            senaAlias,
+      vence_at:         venceAt,
+      estado:           'pendiente_sena',
+    })
+
     await resend.emails.send({
       from: 'PeluApp <turnos@servicio-turno-web-peluapp.xyz>',
       to: turno.cliente_email,
