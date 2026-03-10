@@ -17,7 +17,9 @@ export default async function handler(req, res) {
     fecha_original, hora_original,
     fecha_propuesta, hora_propuesta,
     motivo,
-    peluqueria_id
+    peluqueria_id,
+    // Datos de seña (solo para accion === 'esperando_sena')
+    sena_monto, sena_alias, sena_horas,
   } = req.body
 
   const appUrl       = process.env.NEXT_PUBLIC_APP_URL || 'https://servicio-turno-web-peluapp.xyz'
@@ -48,9 +50,43 @@ export default async function handler(req, res) {
       color:  '#f87171', bg: '#7f1d1d20', border: '#f8717140',
       msg:    'Tu turno fue <strong style="color:#f87171">cancelado</strong> por la peluquería. Podés pedir otro cuando quieras.'
     },
+    esperando_sena: {
+      emoji:  '💸',
+      asunto: '💸 Confirmá tu turno — pagá la seña',
+      color:  '#fb923c', bg: '#431a0520', border: '#fb923c40',
+      msg:    'Tu turno está <strong style="color:#fb923c">pre-confirmado</strong>. Para reservarlo definitivamente, tenés que pagar la seña.'
+    },
   }
 
   const cfg = config[accion] || config.rechazado
+
+  // Bloque HTML especial para esperando_sena
+  const bloqueSeña = accion === 'esperando_sena' ? `
+    <div style="background:#431a0530;border:1px solid #fb923c50;border-radius:12px;padding:20px;margin-bottom:16px;">
+      <p style="color:#fb923c;font-size:11px;font-weight:700;margin:0 0 14px;text-transform:uppercase;letter-spacing:1px;">💸 Instrucciones de pago</p>
+      <table style="width:100%;font-size:14px;border-collapse:collapse;">
+        <tr>
+          <td style="color:#737373;padding:7px 0;border-bottom:1px solid #2a2a2a;">Monto</td>
+          <td style="text-align:right;color:white;font-weight:800;font-size:18px;padding:7px 0;border-bottom:1px solid #2a2a2a;">
+            $${Number(sena_monto).toLocaleString('es-AR')}
+          </td>
+        </tr>
+        <tr>
+          <td style="color:#737373;padding:7px 0;">Alias / CBU</td>
+          <td style="text-align:right;color:#fb923c;font-weight:700;font-family:monospace;font-size:15px;padding:7px 0;">
+            ${sena_alias}
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div style="background:#451a0310;border:1px solid #fbbf2440;border-radius:10px;padding:14px;margin-bottom:18px;">
+      <p style="color:#fbbf24;font-size:13px;margin:0;line-height:1.6;">
+        ⏰ Tenés <strong>${sena_horas} horas</strong> para realizar la transferencia.<br/>
+        Si no pagás en ese tiempo, el turno se <strong>cancela automáticamente</strong>.<br/>
+        Una vez que el peluquero confirme el pago, vas a recibir otro email.
+      </p>
+    </div>
+  ` : ''
 
   try {
     await resend.emails.send({
@@ -70,15 +106,17 @@ export default async function handler(req, res) {
             Hola <strong>${nombre}</strong>, ${cfg.msg}
           </p>
 
-          <!-- Turno original -->
+          <!-- Turno -->
           <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:18px;margin-bottom:14px;">
-            <p style="color:#555;font-size:11px;margin:0 0 10px;text-transform:uppercase;letter-spacing:1px;">Turno original</p>
+            <p style="color:#555;font-size:11px;margin:0 0 10px;text-transform:uppercase;letter-spacing:1px;">Tu turno</p>
             <table style="width:100%;font-size:14px;border-collapse:collapse;">
               <tr><td style="color:#737373;padding:5px 0;">Peluquero</td><td style="text-align:right;">${peluquero_nombre}</td></tr>
               <tr><td style="color:#737373;padding:5px 0;">Fecha</td><td style="text-align:right;">${formatFecha(fecha_original)}</td></tr>
               <tr><td style="color:#737373;padding:5px 0;">Hora</td><td style="text-align:right;">${hora_original}hs</td></tr>
             </table>
           </div>
+
+          ${bloqueSeña}
 
           ${accion === 'modificado' && fecha_propuesta ? `
           <!-- Nuevo horario propuesto -->
@@ -98,14 +136,14 @@ export default async function handler(req, res) {
           </div>
           ` : ''}
 
-          ${motivo && accion !== 'modificado' ? `
+          ${motivo && accion !== 'modificado' && accion !== 'esperando_sena' ? `
           <p style="color:#737373;font-size:13px;font-style:italic;margin-bottom:18px;">💬 ${motivo}</p>
           ` : ''}
 
           <div style="text-align:center;">
             <a href="${misTurnosUrl}"
                style="display:inline-block;background:#7c3aed;color:white;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;">
-              ${accion === 'modificado' ? 'Ver y responder →' : 'Ver mis turnos →'}
+              ${accion === 'modificado' ? 'Ver y responder →' : accion === 'esperando_sena' ? 'Ver mi turno →' : 'Ver mis turnos →'}
             </a>
           </div>
 

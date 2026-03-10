@@ -4,16 +4,17 @@ import { supabase } from '../lib/supabase'
 import Layout from '../components/Layout'
 import Card from '../components/Card'
 import Button from '../components/Button'
-import { CheckCircle, XCircle, AlertCircle, Clock } from 'lucide-react'
+import { CheckCircle, XCircle, AlertCircle, Clock, DollarSign } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 const ESTADOS = {
-  pendiente:  { label: 'Esperando respuesta',          color: 'text-yellow-400',  bg: 'border-yellow-500/30  bg-yellow-500/5',   Icon: Clock        },
-  confirmado: { label: 'Confirmado ✓',                 color: 'text-emerald-400', bg: 'border-emerald-500/30 bg-emerald-500/5',  Icon: CheckCircle  },
-  modificado: { label: 'El peluquero propuso un cambio', color: 'text-blue-400',  bg: 'border-blue-500/30    bg-blue-500/5',     Icon: AlertCircle  },
-  rechazado:  { label: 'Rechazado',                    color: 'text-red-400',     bg: 'border-red-500/30     bg-red-500/5',      Icon: XCircle      },
-  cancelado:  { label: 'Cancelado',                    color: 'text-zinc-500',    bg: 'border-zinc-700       bg-zinc-800/40',    Icon: XCircle      },
+  pendiente:      { label: 'Esperando respuesta',           color: 'text-yellow-400',  bg: 'border-yellow-500/30  bg-yellow-500/5',   Icon: Clock        },
+  confirmado:     { label: 'Confirmado ✓',                  color: 'text-emerald-400', bg: 'border-emerald-500/30 bg-emerald-500/5',  Icon: CheckCircle  },
+  modificado:     { label: 'El peluquero propuso un cambio', color: 'text-blue-400',   bg: 'border-blue-500/30    bg-blue-500/5',     Icon: AlertCircle  },
+  esperando_sena: { label: 'Esperando pago de seña',        color: 'text-orange-400',  bg: 'border-orange-500/30  bg-orange-500/5',  Icon: DollarSign   },
+  rechazado:      { label: 'Rechazado',                     color: 'text-red-400',     bg: 'border-red-500/30     bg-red-500/5',      Icon: XCircle      },
+  cancelado:      { label: 'Cancelado',                     color: 'text-zinc-500',    bg: 'border-zinc-700       bg-zinc-800/40',    Icon: XCircle      },
 }
 
 function formatFecha(f) {
@@ -22,26 +23,29 @@ function formatFecha(f) {
   return format(new Date(y, m - 1, d), "EEEE d 'de' MMMM", { locale: es })
 }
 
+function horasRestantes(venceAt) {
+  if (!venceAt) return null
+  const diff = new Date(venceAt) - new Date()
+  if (diff <= 0) return 0
+  return Math.ceil(diff / (1000 * 60 * 60))
+}
+
 export default function MiTurno() {
   const router = useRouter()
-  const [cliente, setCliente]     = useState(null)
+  const [cliente, setCliente]       = useState(null)
   const [peluqueria, setPeluqueria] = useState(null)
-  const [turnos, setTurnos]       = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [accion, setAccion]       = useState({})
+  const [turnos, setTurnos]         = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [accion, setAccion]         = useState({})
 
   useEffect(() => {
     const c   = sessionStorage.getItem('cliente')
-    // ← tomar el ?p= de la URL si está, sino del sessionStorage
     const pid = router.query.p || sessionStorage.getItem('peluqueria_id')
 
     if (!pid) { router.push('/'); return }
-
-    // Guardarlo en sessionStorage para que el resto de la página lo use
     sessionStorage.setItem('peluqueria_id', pid)
 
     if (!c) {
-      // No tiene sesión → mandarlo al inicio pero conservando el ID de la peluquería
       router.push(`/?p=${pid}`)
       return
     }
@@ -52,7 +56,6 @@ export default function MiTurno() {
       .then(({ data }) => setPeluqueria(data))
     cargarTurnos(cli.id, pid)
   }, [router.query.p])
-
 
   const cargarTurnos = async (clienteId, pid) => {
     setLoading(true)
@@ -81,13 +84,13 @@ export default function MiTurno() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email:            turno.cliente_email,
-        nombre:           turno.cliente_nombre,
+        email:             turno.cliente_email,
+        nombre:            turno.cliente_nombre,
         peluqueria_nombre: peluqueria?.nombre,
-        peluquero_nombre: turno.peluquero_nombre,
-        servicio_nombre:  turno.servicio_nombre || 'Sin especificar',
-        fecha:            turno.fecha_propuesta,
-        hora:             turno.hora_propuesta,
+        peluquero_nombre:  turno.peluquero_nombre,
+        servicio_nombre:   turno.servicio_nombre || 'Sin especificar',
+        fecha:             turno.fecha_propuesta,
+        hora:              turno.hora_propuesta,
         esConfirmacionCambio: true
       })
     })
@@ -115,7 +118,6 @@ export default function MiTurno() {
     }).eq('id', turno.id)
     cargarTurnos(cliente.id, sessionStorage.getItem('peluqueria_id'))
   }
-
 
   if (!cliente) return null
 
@@ -156,6 +158,10 @@ export default function MiTurno() {
           const { Icon } = est
           const cargando = accion[turno.id] === 'loading'
 
+          const esEsperandoSena = turno.estado === 'esperando_sena'
+          const horas = esEsperandoSena ? horasRestantes(turno.sena_vence_at) : null
+          const vencido = horas !== null && horas <= 0
+
           return (
             <Card key={turno.id} className={`border ${est.bg}`}>
 
@@ -163,6 +169,12 @@ export default function MiTurno() {
               <div className={`flex items-center gap-2 mb-4 ${est.color}`}>
                 <Icon size={18} />
                 <span className="font-semibold text-sm">{est.label}</span>
+                {esEsperandoSena && horas !== null && !vencido && (
+                  <span className="text-zinc-500 text-xs font-normal ml-1">· vence en {horas}hs</span>
+                )}
+                {vencido && (
+                  <span className="text-red-400 text-xs font-semibold ml-1">· vencida</span>
+                )}
               </div>
 
               {/* Info */}
@@ -179,6 +191,35 @@ export default function MiTurno() {
                   </div>
                 ))}
               </div>
+
+              {/* ── ESPERANDO SEÑA ── */}
+              {esEsperandoSena && !vencido && (
+                <div className="mb-4 p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl">
+                  <p className="text-orange-300 font-semibold text-sm mb-3">
+                    💸 Instrucciones para pagar la seña:
+                  </p>
+                  <p className="text-zinc-400 text-sm mb-4 leading-relaxed">
+                    Para confirmar tu turno definitivamente, realizá una transferencia y avisale al peluquero.
+                    Una vez que confirme el pago, vas a recibir un email de confirmación.
+                  </p>
+                  <div className="flex flex-col gap-1 text-sm">
+                    <div className="flex items-center gap-2 p-2 bg-orange-500/10 rounded-lg mt-1">
+                      <Clock size={13} className="text-orange-400 flex-shrink-0" />
+                      <span className="text-orange-300/80 text-xs">
+                        Tenés <strong>{horas} horas</strong> para pagar. Después se cancela automáticamente.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {esEsperandoSena && vencido && (
+                <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                  <p className="text-red-400 font-semibold text-sm">
+                    ⏰ El tiempo para pagar la seña venció. Este turno será cancelado automáticamente.
+                  </p>
+                </div>
+              )}
 
               {/* MODIFICADO: el peluquero propuso cambio */}
               {turno.estado === 'modificado' && turno.fecha_propuesta && (
@@ -227,7 +268,6 @@ export default function MiTurno() {
               {(turno.estado === 'rechazado' || turno.estado === 'cancelado') && turno.motivo && (
                 <p className="text-xs text-zinc-500 italic mt-2">💬 {turno.motivo}</p>
               )}
-
 
               {/* Cancelar si está pendiente o confirmado */}
               {(turno.estado === 'pendiente' || turno.estado === 'confirmado') && (
