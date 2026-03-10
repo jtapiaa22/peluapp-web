@@ -72,29 +72,12 @@ export default function MiTurno() {
 
   const aceptarCambio = async (turno) => {
     setAccion(a => ({ ...a, [turno.id]: 'loading' }))
-    await supabase.from('turnos_web').update({
-      estado:          'confirmado',
-      fecha:           turno.fecha_propuesta,
-      hora:            turno.hora_propuesta,
-      fecha_propuesta: null,
-      hora_propuesta:  null,
-    }).eq('id', turno.id)
-
-    await fetch('/api/enviar-confirmacion', {
+    const res = await fetch('/api/aceptar-cambio', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email:             turno.cliente_email,
-        nombre:            turno.cliente_nombre,
-        peluqueria_nombre: peluqueria?.nombre,
-        peluquero_nombre:  turno.peluquero_nombre,
-        servicio_nombre:   turno.servicio_nombre || 'Sin especificar',
-        fecha:             turno.fecha_propuesta,
-        hora:              turno.hora_propuesta,
-        esConfirmacionCambio: true
-      })
+      body: JSON.stringify({ turno_id: turno.id })
     })
-
+    const data = await res.json()
     setAccion(a => ({ ...a, [turno.id]: 'done' }))
     cargarTurnos(cliente.id, sessionStorage.getItem('peluqueria_id'))
   }
