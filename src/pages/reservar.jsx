@@ -30,14 +30,23 @@ function generarHorarios(horario = {}) {
   return slots
 }
 
-function generarDias(diasActivos = [1, 2, 3, 4, 5, 6], cantidad = 30) {
+function generarDias(horarioConfig = {}, cantidad = 30) {
+  const diasActivos = horarioConfig.dias ?? [1, 2, 3, 4, 5, 6]
+
+  // Modo fecha unica
+  if (horarioConfig.modo === 'fecha_unica' && horarioConfig.fecha_unica) {
+    const hoy = format(startOfDay(new Date()), 'yyyy-MM-dd')
+    return horarioConfig.fecha_unica >= hoy ? [horarioConfig.fecha_unica] : []
+  }
+
+  // Modo normal
   const dias = []
   const hoy  = startOfDay(new Date())
   let i = 1
   while (dias.length < cantidad) {
     const d = addDays(hoy, i++)
     if (diasActivos.includes(d.getDay())) dias.push(format(d, 'yyyy-MM-dd'))
-    if (i > 120) break // safety
+    if (i > 120) break
   }
   return dias
 }
@@ -69,7 +78,7 @@ export default function Reservar() {
   const horarioConfig = peluqueria?.horario || { inicio: '09:00', fin: '20:00', intervalo: 30, dias: [1,2,3,4,5,6] }
   const HORARIOS = useMemo(() => generarHorarios(horarioConfig), [peluqueria])
   const dias     = useMemo(
-    () => generarDias(horarioConfig.dias ?? [1,2,3,4,5,6]).filter(d => !diasBloqueados.includes(d)),
+    () => generarDias(horarioConfig).filter(d => !diasBloqueados.includes(d)),
     [peluqueria, diasBloqueados]
   )
 
