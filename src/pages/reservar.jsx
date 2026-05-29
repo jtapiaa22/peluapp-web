@@ -109,7 +109,7 @@ export default function Reservar() {
     const pid = sessionStorage.getItem('peluqueria_id')
     const { data: tw } = await supabase.from('turnos_web').select('hora')
       .eq('peluqueria_id', pid).eq('peluquero_id', seleccion.peluquero.local_id)
-      .eq('fecha', seleccion.fecha).in('estado', ['pendiente','confirmado','modificado'])
+      .eq('fecha', seleccion.fecha).in('estado', ['pendiente','confirmado','modificado','esperando_sena'])
     const { data: tm } = await supabase.from('turnos_manuales_web').select('hora')
       .eq('peluqueria_id', pid).eq('peluquero_id', seleccion.peluquero.local_id)
       .eq('fecha', seleccion.fecha)
