@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../lib/supabase'
+import { normalizarTelefono } from '../lib/telefono'
 import Layout from '../components/Layout'
 import Card from '../components/Card'
 import Button from '../components/Button'
@@ -39,34 +40,49 @@ export default function MiTurno() {
   const [accion, setAccion]         = useState({})
 
   useEffect(() => {
-    const c   = sessionStorage.getItem('cliente')
     const pid = router.query.p || sessionStorage.getItem('peluqueria_id')
-
     if (!pid) { router.push('/'); return }
     sessionStorage.setItem('peluqueria_id', pid)
 
-    if (!c) {
-      router.push(`/?p=${pid}`)
-      return
+    // Soporte para link de WhatsApp: /mi-turno?p=XXX&tel=YYYY
+    const telParam = router.query.tel
+
+    const stored = sessionStorage.getItem('cliente')
+    let cli = stored ? JSON.parse(stored) : null
+
+    if (!cli && telParam) {
+      cli = { nombre: '', telefono: decodeURIComponent(telParam) }
+      sessionStorage.setItem('cliente', JSON.stringify(cli))
     }
 
-    const cli = JSON.parse(c)
+    if (!cli) { router.push(`/?p=${pid}`); return }
+
     setCliente(cli)
     supabase.from('peluquerias').select('*').eq('id', pid).maybeSingle()
       .then(({ data }) => setPeluqueria(data))
-    cargarTurnos(cli.id, pid)
-  }, [router.query.p])
+    cargarTurnos(cli.telefono, pid)
+  }, [router.query.p, router.query.tel])
 
-  const cargarTurnos = async (clienteId, pid) => {
+  const cargarTurnos = async (telefono, pid) => {
     setLoading(true)
+    const telNorm = normalizarTelefono(telefono)
     const { data } = await supabase
       .from('turnos_web')
       .select('*')
-      .eq('cliente_id', clienteId)
+      .eq('cliente_telefono', telNorm)
       .eq('peluqueria_id', pid)
       .order('created_at', { ascending: false })
       .limit(15)
     setTurnos(data || [])
+    // Si el cliente llegó por link de WA sin nombre, tomarlo del primer turno
+    if (data?.length) {
+      setCliente(c => {
+        if (c?.nombre) return c
+        const updated = { ...c, nombre: data[0].cliente_nombre }
+        sessionStorage.setItem('cliente', JSON.stringify(updated))
+        return updated
+      })
+    }
     setLoading(false)
   }
 
@@ -79,7 +95,7 @@ export default function MiTurno() {
     })
     const data = await res.json()
     setAccion(a => ({ ...a, [turno.id]: 'done' }))
-    cargarTurnos(cliente.id, sessionStorage.getItem('peluqueria_id'))
+    cargarTurnos(cliente.telefono, sessionStorage.getItem('peluqueria_id'))
   }
 
   const rechazarCambio = async (turno) => {
@@ -89,7 +105,7 @@ export default function MiTurno() {
       motivo: (turno.motivo || '') + ' | Cliente no aceptó el cambio de horario.'
     }).eq('id', turno.id)
     setAccion(a => ({ ...a, [turno.id]: 'done' }))
-    cargarTurnos(cliente.id, sessionStorage.getItem('peluqueria_id'))
+    cargarTurnos(cliente.telefono, sessionStorage.getItem('peluqueria_id'))
   }
 
   const cancelarTurno = async (turno) => {
@@ -99,7 +115,7 @@ export default function MiTurno() {
       estado: 'cancelado',
       motivo: motivo.trim() || 'Cancelado por el cliente'
     }).eq('id', turno.id)
-    cargarTurnos(cliente.id, sessionStorage.getItem('peluqueria_id'))
+    cargarTurnos(cliente.telefono, sessionStorage.getItem('peluqueria_id'))
   }
 
   if (!cliente) return null

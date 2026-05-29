@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../lib/supabase'
+import { normalizarTelefono } from '../lib/telefono'
 import Layout from '../components/Layout'
 import Card from '../components/Card'
 import Button from '../components/Button'
-import { User, Scissors, Calendar, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { User, Scissors, Calendar, Clock, CheckCircle } from 'lucide-react'
 import { format, addDays, startOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -133,9 +134,8 @@ export default function Reservar() {
       const pid = sessionStorage.getItem('peluqueria_id')
       const { error: e } = await supabase.from('turnos_web').insert({
         peluqueria_id:    pid,
-        cliente_id:       cliente.id,
         cliente_nombre:   cliente.nombre,
-        cliente_email:    cliente.email,
+        cliente_telefono: normalizarTelefono(cliente.telefono),
         peluquero_id:     seleccion.peluquero.local_id,
         peluquero_nombre: seleccion.peluquero.nombre,
         servicio_id:      seleccion.servicio?.local_id || null,
@@ -145,21 +145,6 @@ export default function Reservar() {
         estado:           'pendiente'
       })
       if (e) throw e
-
-      await fetch('/api/enviar-confirmacion', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email:             cliente.email,
-          nombre:            cliente.nombre,
-          peluqueria_nombre: peluqueria?.nombre,
-          peluquero_nombre:  seleccion.peluquero.nombre,
-          servicio_nombre:   seleccion.servicio?.nombre || 'Sin especificar',
-          fecha:             seleccion.fecha,
-          hora:              seleccion.hora,
-          esConfirmacionCambio: false,
-          peluqueria_id:     pid
-        })
-      })
       setEnviado(true)
     } catch(e) {
       if (e?.code === '23505') setError('Ese horario acaba de ser tomado por otra persona. Elegí otro.')
@@ -182,15 +167,15 @@ export default function Reservar() {
           <p className="text-zinc-400 text-sm">El peluquero va a revisarlo y te responderá pronto.</p>
         </div>
 
-        <Card className="w-full border-yellow-500/30 bg-yellow-500/5">
+        <Card className="w-full border-emerald-500/30 bg-emerald-500/5">
           <div className="flex gap-3 items-start">
-            <AlertCircle size={22} className="text-yellow-400 flex-shrink-0 mt-0.5" />
+            <span className="text-emerald-400 flex-shrink-0 mt-0.5 text-xl">💬</span>
             <div className="text-left">
-              <p className="font-bold text-yellow-300 mb-1">⚠️ ¡Atención! Revisá tu email</p>
-              <p className="text-yellow-200/70 text-sm">
-                Cuando el peluquero responda tu turno vas a recibir un aviso en{' '}
-                <strong className="text-yellow-300">{cliente.email}</strong>.
-                Entrá a la web para ver si confirmó, modificó o rechazó tu turno.
+              <p className="font-bold text-emerald-300 mb-1">Te avisamos por WhatsApp</p>
+              <p className="text-emerald-200/70 text-sm">
+                Cuando el peluquero responda, te llega un mensaje al{' '}
+                <strong className="text-emerald-300">{cliente.telefono}</strong>.
+                Entrá al link del mensaje para ver el detalle.
               </p>
             </div>
           </div>
