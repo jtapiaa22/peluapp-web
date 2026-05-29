@@ -64,7 +64,7 @@ async function enviarTemplate(telefono, nombre_template, params) {
  * peluapp_rechazado   → "Hola {{1}}, tu turno en {{2}} no pudo ser confirmado ❌{{3}} Podés pedir otro: {{4}}"
  * peluapp_modificado  → "Hola {{1}}, {{2}} propuso un cambio en tu turno 📅 Nueva fecha: {{3}} a las {{4}}hs. Tenés 12hs para responder: {{5}}"
  * peluapp_cancelado   → "Hola {{1}}, tu turno en {{2}} fue cancelado ❌{{3}} Podés pedir otro: {{4}}"
- * peluapp_sena        → "Hola {{1}}, tu turno en {{2}} está casi listo 💸 Para confirmar, pagá ${{3}} al alias {{4}}. Tenés {{5}} horas. Ver detalle: {{6}}"
+ * peluapp_sena        → "Hola {{1}}, tu turno en {{2}} está casi listo 💸 Para confirmarlo, pagá ${{3}} al alias {{4}}. Tenés {{5}} horas. Ver detalle: {{6}}. 📧 Enviá el comprobante a {{7}} con el asunto: {{8}}. ¡Gracias!"
  *
  * Categoría: UTILITY | Idioma: es (Spanish)
  */
@@ -107,7 +107,7 @@ export async function notificarCancelado({ telefono, nombre, peluqueria_nombre, 
   ])
 }
 
-export async function notificarSena({ telefono, nombre, peluqueria_nombre, sena_monto, sena_alias, sena_horas, peluqueria_id }) {
+export async function notificarSena({ telefono, nombre, peluqueria_nombre, sena_monto, sena_alias, sena_horas, peluqueria_id, sena_correo }) {
   return enviarTemplate(telefono, 'peluapp_sena', [
     nombre,
     peluqueria_nombre,
@@ -115,5 +115,7 @@ export async function notificarSena({ telefono, nombre, peluqueria_nombre, sena_
     sena_alias,
     String(sena_horas),
     linkTurno(peluqueria_id, telefono),
+    sena_correo || '—',
+    `${nombre} - ${telefono} - COMPROBANTE`,
   ])
 }

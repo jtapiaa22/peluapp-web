@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     fecha_propuesta, hora_propuesta,
     motivo,
     peluqueria_id,
-    sena_monto, sena_alias, sena_horas,
+    sena_monto, sena_alias, sena_horas, sena_correo,
   } = req.body
 
   if (!telefono) return res.status(400).json({ error: 'Falta teléfono' })
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     } else if (accion === 'esperando_sena') {
       await notificarSena({
         telefono, nombre, peluqueria_nombre,
-        sena_monto, sena_alias, sena_horas,
+        sena_monto, sena_alias, sena_horas, sena_correo,
         peluqueria_id,
       })
     }

@@ -17,11 +17,12 @@ export default async function handler(req, res) {
   if (!turno) return res.status(404).json({ error: 'Turno no encontrado' })
 
   const { data: peluqueria } = await supabase
-    .from('peluquerias').select('sena_monto, sena_alias, sena_horas_vencimiento, nombre').eq('id', turno.peluqueria_id).single()
+    .from('peluquerias').select('sena_monto, sena_alias, sena_horas_vencimiento, sena_correo, nombre').eq('id', turno.peluqueria_id).single()
 
-  const senaMonto = Number(peluqueria?.sena_monto || 0)
-  const senaAlias = peluqueria?.sena_alias?.trim() || ''
-  const senaHoras = Number(peluqueria?.sena_horas_vencimiento || 24)
+  const senaMonto  = Number(peluqueria?.sena_monto || 0)
+  const senaAlias  = peluqueria?.sena_alias?.trim() || ''
+  const senaHoras  = Number(peluqueria?.sena_horas_vencimiento || 24)
+  const senaCorreo = peluqueria?.sena_correo?.trim() || ''
   const telefono  = turno.cliente_telefono
 
   if (senaMonto > 0 && senaAlias) {
@@ -55,12 +56,13 @@ export default async function handler(req, res) {
     if (telefono) {
       await notificarSena({
         telefono,
-        nombre:           turno.cliente_nombre,
+        nombre:            turno.cliente_nombre,
         peluqueria_nombre: peluqueria?.nombre || 'PeluApp',
-        sena_monto:       senaMonto,
-        sena_alias:       senaAlias,
-        sena_horas:       senaHoras,
-        peluqueria_id:    turno.peluqueria_id,
+        sena_monto:        senaMonto,
+        sena_alias:        senaAlias,
+        sena_horas:        senaHoras,
+        sena_correo:       senaCorreo,
+        peluqueria_id:     turno.peluqueria_id,
       }).catch(() => {})
     }
 
