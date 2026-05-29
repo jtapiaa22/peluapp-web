@@ -211,6 +211,15 @@ export default function MiTurno() {
                       </span>
                     </div>
                   </div>
+                  {peluqueria?.sena_correo && (
+                    <div className="flex flex-col gap-1 p-3 mb-4 bg-zinc-800/50 border border-zinc-700/40 rounded-lg text-xs">
+                      <p className="text-zinc-400 mb-1">📧 Enviá el comprobante a:</p>
+                      <p className="font-mono font-bold text-orange-300">{peluqueria.sena_correo}</p>
+                      <p className="text-zinc-500 mt-1">
+                        Asunto: <span className="text-zinc-300 font-medium">{turno.cliente_nombre} - {turno.cliente_telefono} - COMPROBANTE</span>
+                      </p>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 p-2 bg-orange-500/10 rounded-lg">
                     <Clock size={13} className="text-orange-400 flex-shrink-0" />
                     <span className="text-orange-300/80 text-xs">
