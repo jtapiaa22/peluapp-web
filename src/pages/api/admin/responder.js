@@ -4,6 +4,7 @@ import {
   notificarConfirmado, notificarRechazado, notificarModificado,
   notificarCancelado, notificarSena,
 } from '../../../lib/whatsapp'
+import { configSena } from '../../../lib/sena'
 
 const ACCIONES = ['confirmado', 'rechazado', 'modificado', 'cancelado']
 
@@ -33,10 +34,14 @@ export default async function handler(req, res) {
     .from('turnos_web').select('*').eq('id', id).eq('peluqueria_id', pid).maybeSingle()
   if (!turno) return res.status(404).json({ error: 'Turno no encontrado.' })
 
+  // select('*') a proposito: asi sena_activa se lee sola cuando exista la
+  // columna, sin romper mientras todavia no este creada.
   const { data: pel } = await supabaseAdmin
     .from('peluquerias')
-    .select('nombre, sena_monto, sena_alias, sena_horas_vencimiento, sena_correo')
+    .select('*')
     .eq('id', pid).maybeSingle()
+
+  const sena = configSena(pel)
 
   const pelNombre = pel?.nombre || 'PeluApp'
   const horaOriginal = turno.hora?.substring(0, 5)
@@ -50,13 +55,9 @@ export default async function handler(req, res) {
   let envio
 
   if (accion === 'confirmado') {
-    const senaMonto = pel?.sena_monto
-    const senaAlias = pel?.sena_alias
-    const senaHoras = Number(pel?.sena_horas_vencimiento || 24)
-
     // ── Con seña: el turno queda esperando el pago, no confirmado ──
-    if (senaMonto && Number(senaMonto) > 0 && senaAlias && String(senaAlias).trim()) {
-      const venceAt = new Date(Date.now() + senaHoras * 60 * 60 * 1000).toISOString()
+    if (sena.activa) {
+      const venceAt = new Date(Date.now() + sena.horas * 60 * 60 * 1000).toISOString()
 
       const { error } = await supabaseAdmin.from('turnos_web').update({
         estado: 'esperando_sena',
@@ -76,18 +77,18 @@ export default async function handler(req, res) {
         servicio_nombre: turno.servicio_nombre || null,
         fecha: turno.fecha,
         hora: horaOriginal,
-        monto: Number(senaMonto),
-        alias: senaAlias,
+        monto: sena.monto,
+        alias: sena.alias,
         vence_at: venceAt,
         estado: 'pendiente_sena',
       })
 
       envio = await notificarSena({
         ...base,
-        sena_monto: Number(senaMonto),
-        sena_alias: senaAlias,
-        sena_horas: senaHoras,
-        sena_correo: pel?.sena_correo || '',
+        sena_monto: sena.monto,
+        sena_alias: sena.alias,
+        sena_horas: sena.horas,
+        sena_correo: sena.correo,
       })
 
       return res.status(200).json({ ok: true, esperandoSena: true, whatsapp: envio })

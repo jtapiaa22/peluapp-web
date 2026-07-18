@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { notificarSena, notificarConfirmado } from '../../lib/whatsapp'
+import { configSena } from '../../lib/sena'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -16,17 +17,16 @@ export default async function handler(req, res) {
     .from('turnos_web').select('*').eq('id', turno_id).single()
   if (!turno) return res.status(404).json({ error: 'Turno no encontrado' })
 
+  // select('*') a proposito: asi sena_activa se lee sola cuando exista la
+  // columna, sin romper mientras todavia no este creada.
   const { data: peluqueria } = await supabase
-    .from('peluquerias').select('sena_monto, sena_alias, sena_horas_vencimiento, sena_correo, nombre').eq('id', turno.peluqueria_id).single()
+    .from('peluquerias').select('*').eq('id', turno.peluqueria_id).single()
 
-  const senaMonto  = Number(peluqueria?.sena_monto || 0)
-  const senaAlias  = peluqueria?.sena_alias?.trim() || ''
-  const senaHoras  = Number(peluqueria?.sena_horas_vencimiento || 24)
-  const senaCorreo = peluqueria?.sena_correo?.trim() || ''
-  const telefono  = turno.cliente_telefono
+  const sena     = configSena(peluqueria)
+  const telefono = turno.cliente_telefono
 
-  if (senaMonto > 0 && senaAlias) {
-    const venceAt = new Date(Date.now() + senaHoras * 60 * 60 * 1000).toISOString()
+  if (sena.activa) {
+    const venceAt = new Date(Date.now() + sena.horas * 60 * 60 * 1000).toISOString()
 
     await supabase.from('turnos_web').update({
       estado:          'esperando_sena',
@@ -47,8 +47,8 @@ export default async function handler(req, res) {
       servicio_nombre:  turno.servicio_nombre || null,
       fecha:            turno.fecha_propuesta,
       hora:             turno.hora_propuesta?.substring(0, 5),
-      monto:            senaMonto,
-      alias:            senaAlias,
+      monto:            sena.monto,
+      alias:            sena.alias,
       vence_at:         venceAt,
       estado:           'pendiente_sena',
     })
@@ -58,10 +58,10 @@ export default async function handler(req, res) {
         telefono,
         nombre:            turno.cliente_nombre,
         peluqueria_nombre: peluqueria?.nombre || 'PeluApp',
-        sena_monto:        senaMonto,
-        sena_alias:        senaAlias,
-        sena_horas:        senaHoras,
-        sena_correo:       senaCorreo,
+        sena_monto:        sena.monto,
+        sena_alias:        sena.alias,
+        sena_horas:        sena.horas,
+        sena_correo:       sena.correo,
         peluqueria_id:     turno.peluqueria_id,
       }).catch(() => {})
     }
