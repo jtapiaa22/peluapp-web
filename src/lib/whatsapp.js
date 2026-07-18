@@ -2,6 +2,11 @@ import { normalizarTelefono } from './telefono'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://servicio-turno-web-peluapp.xyz'
 
+// Las plantillas están dadas de alta en Meta como es_AR, NO como es. Con 'es'
+// la API responde 132001 "Template name does not exist in the translation" y no
+// se envía nada. Configurable por si se agregan plantillas en otro idioma.
+const WA_LANG = process.env.WA_TEMPLATE_LANG || 'es_AR'
+
 function linkTurno(peluqueria_id, telefono) {
   return `${APP_URL}/mi-turno?p=${peluqueria_id}&tel=${encodeURIComponent(telefono)}`
 }
@@ -37,7 +42,7 @@ async function enviarTemplate(telefono, nombre_template, params) {
         type: 'template',
         template: {
           name: nombre_template,
-          language: { code: 'es' },
+          language: { code: WA_LANG },
           components: [{
             type: 'body',
             parameters: params.map(p => ({ type: 'text', text: String(p) }))
@@ -66,7 +71,7 @@ async function enviarTemplate(telefono, nombre_template, params) {
  * peluapp_cancelado   → "Hola {{1}}, tu turno en {{2}} fue cancelado ❌{{3}} Podés pedir otro: {{4}}"
  * peluapp_sena        → "Hola {{1}}, tu turno en {{2}} está casi listo 💸 Para confirmarlo, pagá ${{3}} al alias {{4}}. Tenés {{5}} horas. Ver detalle: {{6}}. 📧 Enviá el comprobante a {{7}} con el asunto: {{8}}. ¡Gracias!"
  *
- * Categoría: UTILITY | Idioma: es (Spanish)
+ * Categoría: UTILITY | Idioma: es_AR (Spanish - Argentina)
  */
 
 export async function notificarConfirmado({ telefono, nombre, peluqueria_nombre, fecha, hora, peluqueria_id }) {
