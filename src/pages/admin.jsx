@@ -6,7 +6,7 @@ import Input from '../components/Input'
 import Button from '../components/Button'
 import {
   AlertCircle, Check, X, CalendarClock, Clock, User, Scissors,
-  LogOut, RefreshCw, ShieldCheck, AlertTriangle,
+  LogOut, RefreshCw, ShieldCheck, AlertTriangle, Wallet, Timer,
 } from 'lucide-react'
 
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
@@ -20,6 +20,16 @@ function formatFecha(f) {
 }
 
 const hhmm = (h) => (h || '').substring(0, 5)
+
+// Cuánto le queda al cliente para pagar la seña antes de que el turno se libere
+function tiempoRestante(vence) {
+  if (!vence) return null
+  const ms = new Date(vence).getTime() - Date.now()
+  if (ms <= 0) return 'vencida'
+  const horas = Math.floor(ms / 3600000)
+  if (horas >= 1) return `vence en ${horas}h`
+  return `vence en ${Math.max(1, Math.floor(ms / 60000))} min`
+}
 
 export default function Admin() {
   const router = useRouter()
@@ -39,6 +49,7 @@ export default function Admin() {
   // Panel
   const [pendientes, setPendientes] = useState([])
   const [proximos, setProximos]     = useState([])
+  const [senas, setSenas]           = useState([])
   const [refrescando, setRefrescando] = useState(false)
   const [abierto, setAbierto]   = useState(null)   // { id, modo: 'rechazar'|'proponer'|'cancelar' }
   const [motivo, setMotivo]     = useState('')
@@ -48,13 +59,20 @@ export default function Admin() {
   const [aviso, setAviso] = useState(null)  // { tipo, texto }
 
   const cargarTurnos = useCallback(async () => {
-    const r = await fetch('/api/admin/turnos')
-    if (r.status === 401) { setAutenticado(false); return }
-    const d = await r.json()
-    if (r.ok) {
+    const [rT, rS] = await Promise.all([
+      fetch('/api/admin/turnos'),
+      fetch('/api/admin/senas'),
+    ])
+    if (rT.status === 401) { setAutenticado(false); return }
+    const d = await rT.json()
+    if (rT.ok) {
       setPendientes(d.pendientes || [])
       setProximos(d.proximos || [])
       setAutenticado(true)
+    }
+    if (rS.ok) {
+      const s = await rS.json()
+      setSenas(s.senas || [])
     }
   }, [])
 
@@ -134,6 +152,28 @@ export default function Admin() {
       }
 
       setAbierto(null); setMotivo(''); setNuevaFecha(''); setNuevaHora('')
+      await cargarTurnos()
+    } finally { setProcesando(null) }
+  }
+
+  const confirmarSena = async (id) => {
+    setProcesando(id); setAviso(null)
+    try {
+      const r = await fetch('/api/admin/senas', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      const d = await r.json()
+      if (!r.ok) { setAviso({ tipo: 'error', texto: d.error || 'No se pudo confirmar la seña.' }); return }
+
+      if (d.whatsapp && d.whatsapp.ok === false) {
+        setAviso({
+          tipo: 'warning',
+          texto: 'Seña confirmada y turno agendado, pero el WhatsApp al cliente NO se pudo enviar. Avisale por otro medio.',
+        })
+      } else {
+        setAviso({ tipo: 'ok', texto: 'Seña cobrada. El turno quedó confirmado y le avisamos al cliente.' })
+      }
       await cargarTurnos()
     } finally { setProcesando(null) }
   }
@@ -329,6 +369,66 @@ export default function Admin() {
             </div>
           </Card>
         ))}
+
+        {senas.length > 0 && (
+          <>
+            <h2 className="text-sm font-bold text-amber-400 mt-3 flex items-center gap-2">
+              <Wallet size={15} /> Señas por cobrar ({senas.length})
+            </h2>
+            <p className="text-zinc-600 text-xs -mt-2">
+              Cuando te llegue la transferencia, confirmá acá y el turno queda agendado.
+            </p>
+
+            {senas.map(s => {
+              const restante = tiempoRestante(s.vence_at)
+              return (
+                <Card key={s.id} className="border-amber-700/40">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-white truncate">{s.cliente_nombre}</p>
+                        <a href={`https://wa.me/${(s.cliente_telefono || '').replace(/\D/g, '')}`}
+                           target="_blank" rel="noreferrer"
+                           className="text-violet-400 text-xs hover:underline">
+                          {s.cliente_telefono}
+                        </a>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-amber-400 font-bold">
+                          ${Number(s.monto).toLocaleString('es-AR')}
+                        </p>
+                        <p className="text-zinc-500 text-[11px]">alias {s.alias}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 text-sm text-zinc-400">
+                      <span className="flex items-center gap-2">
+                        <CalendarClock size={14} className="text-zinc-600" />
+                        {formatFecha(s.fecha)} · {hhmm(s.hora)} hs
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <User size={14} className="text-zinc-600" />{s.peluquero_nombre}
+                      </span>
+                      {restante && (
+                        <span className={`flex items-center gap-2 ${restante === 'vencida' ? 'text-red-400' : 'text-amber-400'}`}>
+                          <Timer size={14} /> {restante}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="border-t border-zinc-800 pt-3">
+                      <Button size="sm" variant="success" fullWidth
+                        disabled={procesando === s.id}
+                        onClick={() => confirmarSena(s.id)}>
+                        <Check size={15} /> {procesando === s.id ? '...' : 'Ya me pagó — confirmar turno'}
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              )
+            })}
+          </>
+        )}
 
         {proximos.length > 0 && (
           <>
